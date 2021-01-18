@@ -1,27 +1,20 @@
 <html>
     <head>
         <style>
-            Canvas 
-            {
+            Canvas {
                 border:1px solid black
             }
-            .center 
-            {
-                text-align: center;
-            }    
         </style>
-    </head> 
+    </head>
+
+    
+
     <body>
-        <div Class="center">
-            <h1>Cellular Level Virus Simulator</h1>
-            <p> This sitmulator shows how virus move. grow and mutate. </p>
-            <canvas id="myCanvas" height=800 width=800></canvas><br>       
-            
-            <table id="dna"></table>
-            <p id="defense"></p>
-            <p id="energy"></p>
-            <p id="waste"></p>
-        </div>       
-        <script src="main.js"></script>
+        <canvas id="myCanvas" height=800 width=800></canvas><br>
+        <table id="dna"></table>
+        <p id="defense">Defense: 100</p>
+        <p id="energy">Energy: 100</p>
+        <p id="waste">Waste: 100</p>
     </body>
+    <script src="main.js"></script>
 </html>

@@ -11,6 +11,7 @@ const DNA_INCREASE_DEFENSE = 2;
 const DNA_WRITE_SEGMENT = 3;
 
 const ACTIONS = [DNA_ABSORB_NUTRIENTS, DNA_REMOVE_WASTE, DNA_INCREASE_DEFENSE, DNA_WRITE_SEGMENT];
+const NUMBER_TO_STRING = ["Absorb Nutrients", "Remove Waste", "Increase Defense", "Write Segment"];
 const COLORS = ["#FF0000","#00FF00","#0000FF", "#FFFF00"]
 const DEFAULT_COLOR = "#FF00FF";
 
@@ -26,6 +27,8 @@ const ENERGY_LOST_ON_ACTION = 5;
 const VIRUS_MOVE_SPEED = 5;
 const VIRUS_HIT_SUBTRACT = 10;
 const DEFENSE_LOST_ON_WASTE = 1;
+
+
 
 class Cell {
     constructor(dna, canvas, x = 0, y = 0, 
@@ -205,9 +208,23 @@ class Virus {
                  
             }
   
-        return false;
+        
         }
+        return false;
     }
+}
+
+function show_stats(cell) {
+    if (!cell) {return;}
+    let table_inner = '<thead><tr><th colspan=2>DNA pieces</th></tr></thead>';
+    for (let i = 0; i < cell.dna.length; i++) {
+        table_inner += `
+<tr><td style="background-color:${COLORS[cell.dna[i]] || DEFAULT_COLOR}" width=30></td><td>${NUMBER_TO_STRING[cell.dna[i]] || "Set Copying Location"}</td></tr>`
+    }
+    document.getElementById("dna").innerHTML = table_inner;
+    document.getElementById("energy").innerHTML = `ENERGY: ${cell.energy}`;
+    document.getElementById("defense").innerHTML = `DEFENSE: ${cell.defense}`;
+    document.getElementById("waste").innerHTML = `WASTE: ${cell.waste}`;
 }
 
 
@@ -218,15 +235,17 @@ function on_click(event) {
     let y = event.pageY - top;
     for (let i = 0; i < cells.length; i++) {
         let cell = cells[i];
-        if (cell.x < x < cell.x + CELL_WIDTH && cell.y < y < cell.y + CELL_HEIGHT) {
-            show_stats(cell);
-            break;
+        if (cell.x < x && x < cell.x + CELL_WIDTH && cell.y < y && y < cell.y + CELL_HEIGHT) {
+            last_cell_stats = cell;
+            return;
         }
     }
 }
 
 canvas = document.getElementById("myCanvas");
 canvas.addEventListener("click", on_click);
+
+let last_cell_stats = undefined;
 
 function update_all() {
     let canvas = document.getElementById("myCanvas");
@@ -238,6 +257,7 @@ function update_all() {
         if (cell.check_if_dead()) {
             cell.suicide();
             cells.splice(i, 1);
+            last_cell_stats = undefined;
             continue;
         }
         let d = new Date();
@@ -251,6 +271,7 @@ function update_all() {
         cell.draw();
         
     }
+    show_stats(last_cell_stats);
     for (let i = 0; i < viruses.length; i++) {
         let virus = viruses[i];
         if (!virus.created_by_cell && virus.check_for_cell_collisions()) {
@@ -281,3 +302,5 @@ function update_all() {
     requestAnimationFrame(update_all);
 }
 requestAnimationFrame(update_all);
+
+
