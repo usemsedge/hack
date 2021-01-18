@@ -13,7 +13,8 @@ const DNA_WRITE_SEGMENT = 3;
 const ACTIONS = [DNA_ABSORB_NUTRIENTS, DNA_REMOVE_WASTE, DNA_INCREASE_DEFENSE, DNA_WRITE_SEGMENT];
 const NUMBER_TO_STRING = ["Absorb Nutrients", "Remove Waste", "Increase Defense", "Write Segment"];
 const COLORS = ["#FF0000","#00FF00","#0000FF", "#FFFF00"]
-const DEFAULT_COLOR = "#FF00FF";
+const CHANGE_SEGMENT_COLOR = "#FF00FF";
+const MAKE_PROTIEN_COLOR = '#00FFFF';
 
 const WHITE = "#FFFFFF";
 const BLACK = "#000000";
@@ -28,7 +29,13 @@ const VIRUS_MOVE_SPEED = 5;
 const VIRUS_HIT_SUBTRACT = 10;
 const DEFENSE_LOST_ON_WASTE = 1;
 
-
+function hash(string) {
+    let i = 0;
+    for (let j = 0; j < string.length; j++) {
+        i += string.charCodeAt(j);
+    }
+    return (i * (10**9 + 7) + 10**9 + 7) % 5;
+}
 
 class Cell {
     constructor(dna, canvas, x = 0, y = 0, 
@@ -71,8 +78,13 @@ class Cell {
             let start_x = this.x + i * DNA_WIDTH;
             let start_y = this.y + this.height / 2 - DNA_HEIGHT / 2;
             ctx.fillStyle = COLORS[this.dna[i]];
-            if (!COLORS[this.dna[i]]) {
-                ctx.fillStyle = DEFAULT_COLOR;
+            if (typeof this.dna[i] === "object") {
+                if (this.dna[i].length === 2) {
+                    ctx.fillStyle = CHANGE_SEGMENT_COLOR;
+                }
+                else {
+                    ctx.fillStyle = MAKE_PROTIEN_COLOR;
+                }
             }
             ctx.fillRect(start_x, start_y, DNA_WIDTH, DNA_HEIGHT);
         }
@@ -128,9 +140,13 @@ class Cell {
                 break;
 
             default:
-                console.log(5);
-                this.copy_start = this.dna[this.pointer][0]; //these will be relative
-                this.copy_end = this.dna[this.pointer][1];
+                if (this.dna[this.pointer].length === 1) {
+                    this.immunity.push(this.dna[this.pointer][0]);
+                }
+                else {
+                    this.copy_start = this.dna[this.pointer][0]; //these will be relative
+                    this.copy_end = this.dna[this.pointer][1];
+                }
         }   
         this.energy -= ENERGY_LOST_ON_ACTION;
     }
@@ -149,7 +165,12 @@ class Cell {
     }
 
     absorb_virus(virus) {
-        if (this.defense * Math.random() < 50){
+        if (virus.counter_protien in this.immunity) {
+            if (this.defense * Math.random < 10) {
+                this.dna = this.dna.concat(virus.dna);
+            }
+        }
+        else if (this.defense * Math.random() < 50){
             this.dna = this.dna.concat(virus.dna);
         }
         else {
@@ -176,6 +197,7 @@ class Virus {
         this.dy = dy;
         this.created_by_cell = created_by_cell;
         this.host_cell = host_cell;
+        this.counter_protien = hash(dna.toString());
 
         this.last_x = this.canvas.width;
         this.last_y = this.canvas.height;
@@ -186,8 +208,13 @@ class Virus {
         let ctx = this.canvas.getContext("2d");
         for (let i = 0; i < this.dna.length; i++) {            
             ctx.fillStyle = COLORS[this.dna[i]]
-            if (!COLORS[this.dna[i]]) {
-                ctx.fillStyle = DEFAULT_COLOR;
+            if (typeof this.dna[i] === "object") {
+                if (this.dna[i].length === 2) {
+                    ctx.fillStyle = CHANGE_SEGMENT_COLOR;
+                }
+                else {
+                    ctx.fillStyle = MAKE_PROTIEN_COLOR;
+                }
             }
             ctx.fillRect(this.x + i * DNA_WIDTH, this.y, DNA_WIDTH, DNA_HEIGHT);
         }
@@ -218,8 +245,18 @@ function show_stats(cell) {
     if (!cell) {return;}
     let table_inner = '<thead><tr><th colspan=2>DNA pieces</th></tr></thead>';
     for (let i = 0; i < cell.dna.length; i++) {
+        let this_color;
+        if (typeof cell.dna[i] === "number") {
+            this_color = COLORS[cell.dna[i]];
+        }
+        else if (cell.dna[i].length === 1) {
+            this_color = MAKE_PROTIEN_COLOR;
+        }
+        else {
+            this_color = CHANGE_SEGMENT_COLOR;
+        }
         table_inner += `
-<tr><td style="background-color:${COLORS[cell.dna[i]] || DEFAULT_COLOR}" width=30></td><td>${NUMBER_TO_STRING[cell.dna[i]] || "Set Copying Location"}</td></tr>`
+<tr><td style="background-color:${this_color}" width=30></td><td>${NUMBER_TO_STRING[cell.dna[i]] || "Set Copying Location"}</td></tr>`
     }
     document.getElementById("dna").innerHTML = table_inner;
     document.getElementById("energy").innerHTML = `ENERGY: ${cell.energy}`;
