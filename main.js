@@ -281,5 +281,3 @@ function update_all() {
     requestAnimationFrame(update_all);
 }
 requestAnimationFrame(update_all);
-
-
