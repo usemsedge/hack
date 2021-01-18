@@ -1,7 +1,7 @@
 # hack
 health-it hackaction emp
 
-insert this into the f12 shell in browser
+insert this into the f12 shell in browser for an example, copy and paste each line seperatly
 
 cell1 = new Cell([0, 1, 2], document.getElementById("myCanvas"), x=400, y=200)  
 virus1 = new Virus([[5, 3], 3], document.getElementById("myCanvas"), 0, 0)  
