@@ -11,8 +11,8 @@ const DNA_INCREASE_DEFENSE = 2;
 const DNA_WRITE_SEGMENT = 3;
 
 const ACTIONS = [DNA_ABSORB_NUTRIENTS, DNA_REMOVE_WASTE, DNA_INCREASE_DEFENSE, DNA_WRITE_SEGMENT];
-const COLORS = ["#FF0000","#00FF00","#0000FF",  "#FFFF00"]
-const DEFAULT_COLOR = "FF00FF";
+const COLORS = ["#FF0000","#00FF00","#0000FF", "#FFFF00"]
+const DEFAULT_COLOR = "#FF00FF";
 
 const WHITE = "#FFFFFF";
 const BLACK = "#000000";
@@ -24,6 +24,8 @@ const ARROW_MOVE_TIME = 1000; //ms'
 
 const ENERGY_LOST_ON_ACTION = 5;
 const VIRUS_MOVE_SPEED = 5;
+const VIRUS_HIT_SUBTRACT = 10;
+const DEFENSE_LOST_ON_WASTE = 1;
 
 class Cell {
     constructor(dna, canvas, x = 0, y = 0, 
@@ -45,6 +47,7 @@ class Cell {
         this.defense = 100;
         this.waste = 0;
         this.immunity = [];
+        this.viruses = [];
         
         let d = new Date();
         this.time = d.getTime(); 
@@ -64,8 +67,8 @@ class Cell {
         for (let i = 0; i < this.dna.length; i++) {
             let start_x = this.x + i * DNA_WIDTH;
             let start_y = this.y + this.height / 2 - DNA_HEIGHT / 2;
-            ctx.fillStyle = COLORS[this.dna[i]]
-            if (!ctx.fillStyle) {
+            ctx.fillStyle = COLORS[this.dna[i]];
+            if (!COLORS[this.dna[i]]) {
                 ctx.fillStyle = DEFAULT_COLOR;
             }
             ctx.fillRect(start_x, start_y, DNA_WIDTH, DNA_HEIGHT);
@@ -98,38 +101,78 @@ class Cell {
                 }
                 break;
             case DNA_REMOVE_WASTE:
-                this.waste = 0;
+                if (this.defense > 0) {
+                    this.waste = 0;
+                    this.defense -= DEFENSE_LOST_ON_WASTE;
+                }
                 break;
             case DNA_INCREASE_DEFENSE:
                 this.defense += 10
                 if (this.defense > 100) {
                     this.defense = 100;
                 }
+                break;
             
             
             case DNA_WRITE_SEGMENT:
+                let virus = new Virus(this.dna.slice(this.copy_start, this.copy_end), this.canvas, this.x + CELL_WIDTH / 2, this.y + CELL_HEIGHT / 2);
+                virus.created_by_cell = true;
+                virus.host_cell = this;
+                
+                
+                viruses.push(virus);
+                this.viruses.push(virus);
+                break;
 
             default:
-                this.copy_start = this.dna[this.pointer][0];
-                this.copy_end = this.dna[this.pointer][0];
+                console.log(5);
+                this.copy_start = this.dna[this.pointer][0]; //these will be relative
+                this.copy_end = this.dna[this.pointer][1];
         }   
         this.energy -= ENERGY_LOST_ON_ACTION;
     }
 
-    absorb_virus(virus) {
-        this.dna = this.dna.concat(virus.dna);
+    check_if_dead() {
+        if (this.energy <= 0) {
+            return true;
+        }
+        if (this.waste >= 100) {
+            return true;
+        }
+        if (this.defense <= 0) {
+            return true;
+        }
+        return false;
+    }
 
+    absorb_virus(virus) {
+        if (this.defense * Math.random() < 50){
+            this.dna = this.dna.concat(virus.dna);
+        }
+        else {
+            this.defense -= VIRUS_HIT_SUBTRACT;
+        }
+
+    }
+
+    suicide() {
+        for (let i = 0; i < this.viruses.length; i++) {
+            this.viruses[i].host_cell = null;
+            this.viruses[i].created_by_cell = false;
+        }
     }
 }
 
 class Virus { 
-    constructor(dna, canvas, x = 0, y = 0, dx = Math.random() / 2 * VIRUS_MOVE_SPEED, dy = Math.random() / 2 * VIRUS_MOVE_SPEED) {
+    constructor(dna, canvas, x = 0, y = 0, dx = Math.random() / 2 * VIRUS_MOVE_SPEED, dy = Math.random() / 2 * VIRUS_MOVE_SPEED, created_by_cell = false, host_cell = null) {
         this.dna = dna;
         this.canvas = canvas;
         this.x = x;
         this.y = y;
         this.dx = dx;
         this.dy = dy;
+        this.created_by_cell = created_by_cell;
+        this.host_cell = host_cell;
 
         this.last_x = this.canvas.width;
         this.last_y = this.canvas.height;
@@ -140,7 +183,7 @@ class Virus {
         let ctx = this.canvas.getContext("2d");
         for (let i = 0; i < this.dna.length; i++) {            
             ctx.fillStyle = COLORS[this.dna[i]]
-            if (!ctx.fillStyle) {
+            if (!COLORS[this.dna[i]]) {
                 ctx.fillStyle = DEFAULT_COLOR;
             }
             ctx.fillRect(this.x + i * DNA_WIDTH, this.y, DNA_WIDTH, DNA_HEIGHT);
@@ -167,35 +210,73 @@ class Virus {
     }
 }
 
+
+function on_click(event) {
+    let top = canvas.offsetTop + canvas.clientTop;
+    let left = canvas.offsetLeft + canvas.offsetTop;
+    let x = event.pageX - left;
+    let y = event.pageY - top;
+    for (let i = 0; i < cells.length; i++) {
+        let cell = cells[i];
+        if (cell.x < x < cell.x + CELL_WIDTH && cell.y < y < cell.y + CELL_HEIGHT) {
+            show_stats(cell);
+            break;
+        }
+    }
+}
+
+canvas = document.getElementById("myCanvas");
+canvas.addEventListener("click", on_click);
+
 function update_all() {
     let canvas = document.getElementById("myCanvas");
     let ctx = canvas.getContext("2d");
     ctx.fillStyle = WHITE;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    cells.forEach(cell => {
+    for (let i = 0; i < cells.length; i++) {
+        cell = cells[i]
+        if (cell.check_if_dead()) {
+            cell.suicide();
+            cells.splice(i, 1);
+            continue;
+        }
         let d = new Date();
         if (cell.time + ARROW_MOVE_TIME < d.getTime()) {
             cell.time = d.getTime();
             cell.pointer += 1
             cell.pointer = cell.pointer % cell.dna.length;
             cell.do_action();
+            cell.defense -= DEFENSE_LOST_ON_WASTE * cell.viruses.length;
         }
         cell.draw();
-    });
-    viruses.forEach((virus, i) => {
-        if (virus.check_for_cell_collisions()) {
+        
+    }
+    for (let i = 0; i < viruses.length; i++) {
+        let virus = viruses[i];
+        if (!virus.created_by_cell && virus.check_for_cell_collisions()) {
             viruses.splice(i, 1);
         }
         virus.x += virus.dx;
         virus.y += virus.dy;
-        if (virus.x < 0 || virus.x > virus.canvas.width) {
-            virus.dx = -virus.dx;
+        if (!virus.created_by_cell) {
+            if (virus.x < 0 || virus.x > virus.canvas.width) {
+                virus.dx = -virus.dx;
+            }
+            if (virus.y < 0 || virus.y > virus.canvas.height) {
+                virus.dy = -virus.dy;
+            }
         }
-        if (virus.y < 0 || virus.y > virus.canvas.height) {
-            virus.dy = -virus.dy;
+        else {
+            if (virus.x < virus.host_cell.x || virus.x > virus.host_cell.x + CELL_WIDTH) {
+                virus.dx = -virus.dx;
+            }
+            if (virus.y < virus.host_cell.y || virus.y > virus.host_cell.y + CELL_HEIGHT) {
+                virus.dy = -virus.dy;
+            }
         }
         virus.draw();
-    })
+    }
+    
 
     requestAnimationFrame(update_all);
 }
